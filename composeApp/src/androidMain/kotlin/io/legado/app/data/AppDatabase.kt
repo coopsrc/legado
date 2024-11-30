@@ -3,10 +3,13 @@ package io.legado.app.data
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import androidx.room.AutoMigration
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import io.legado.app.data.dao.BookChapterDao
 import io.legado.app.data.dao.BookDao
 import io.legado.app.data.dao.BookGroupDao
@@ -49,6 +52,7 @@ import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.DefaultData
+import kotlinx.coroutines.Dispatchers
 import org.intellij.lang.annotations.Language
 import splitties.init.appCtx
 import java.util.Locale
@@ -102,6 +106,7 @@ val appDb by lazy {
         AutoMigration(from = 71, to = 72),
     ]
 )
+//@ConstructedBy(DatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract val bookDao: BookDao
@@ -220,4 +225,25 @@ abstract class AppDatabase : RoomDatabase() {
 
     }
 
+}
+
+//@Suppress("NO_ACTUAL_FOR_EXPECT")
+//expect object DatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+//    override fun initialize(): AppDatabase
+//}
+fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
+    val dbFile = appCtx.getDatabasePath(AppDatabase.DATABASE_NAME)
+    return Room.databaseBuilder(appCtx, dbFile.absolutePath)
+}
+fun createReaderDatabase(
+    builder: RoomDatabase.Builder<AppDatabase> = getDatabaseBuilder()
+):AppDatabase{
+    return builder
+        .setDriver(BundledSQLiteDriver())
+        .setQueryCoroutineContext(Dispatchers.IO)
+        .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
+        .addMigrations(*DatabaseMigrations.migrations)
+        .allowMainThreadQueries()
+        .addCallback(AppDatabase.dbCallback)
+        .build()
 }
